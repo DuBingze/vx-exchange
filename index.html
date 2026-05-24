@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VX Exchange — 虚拟创业证券交易所</title>
+  <meta name="description" content="一个可部署的虚拟股票交易所平台：创建公司、申请上市、IPO认购、虚拟交易、排行榜和管理员后台。" />
+  <link rel="stylesheet" href="assets/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="config.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <div class="toast-stack" id="toastStack"></div>
+
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand" data-view="market">
+        <div class="brand-mark">VX</div>
+        <div>
+          <div class="brand-name">VX Exchange</div>
+          <div class="brand-subtitle">Virtual Stock Market</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-label">Market</div>
+        <button class="nav-link active" data-view="market"><span>📊</span> 市场行情</button>
+        <button class="nav-link" data-view="ipos"><span>🚀</span> IPO 认购 <em id="ipoCountPill">0</em></button>
+        <button class="nav-link" data-view="leaderboard"><span>🏆</span> 排行榜</button>
+        <div class="nav-label">Account</div>
+        <button class="nav-link" data-view="portfolio"><span>💼</span> 我的持仓</button>
+        <button class="nav-link" data-view="founder"><span>🏢</span> 创始人后台</button>
+        <button class="nav-link" data-view="create"><span>➕</span> 申请上市</button>
+        <div class="nav-label admin-only is-hidden">Admin</div>
+        <button class="nav-link admin-only is-hidden" data-view="admin"><span>🛡️</span> 管理员后台</button>
+      </nav>
+
+      <div class="sidebar-card">
+        <div class="micro-label">总资产 / Net Worth</div>
+        <div class="side-number" id="sideNetWorth">VX 100,000</div>
+        <div class="side-delta" id="sideReturn">+0.00%</div>
+      </div>
+      <div class="mode-card" id="modeCard">正在初始化...</div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="ticker-strip" id="tickerStrip"></div>
+        <div class="top-actions">
+          <div class="wallet-chip"><span>可用余额</span><strong id="cashChip">VX 100,000</strong></div>
+          <div class="user-chip" id="userChip">未登录</div>
+          <button class="btn ghost" id="syncBtn">刷新</button>
+          <button class="btn primary" id="authBtn">登录 / 注册</button>
+        </div>
+      </header>
+
+      <section class="view active" id="view-market">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Live Virtual Market</p>
+            <h1>市场行情</h1>
+            <p>用户创建公司、管理员审核、IPO 后进入二级虚拟交易市场。</p>
+          </div>
+          <div class="filter-row">
+            <button class="chip active" data-sector="all">全部</button>
+            <button class="chip" data-sector="tech">科技</button>
+            <button class="chip" data-sector="finance">金融</button>
+            <button class="chip" data-sector="energy">能源</button>
+            <button class="chip" data-sector="consumer">消费</button>
+            <button class="chip" data-sector="health">医疗</button>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <article class="stat-card">
+            <span>VX 综合指数</span>
+            <strong id="statIndex">0.00</strong>
+            <em class="positive">模拟市场指数</em>
+          </article>
+          <article class="stat-card">
+            <span>上市公司</span>
+            <strong id="statListed">0</strong>
+            <em>Listed companies</em>
+          </article>
+          <article class="stat-card">
+            <span>总成交量</span>
+            <strong id="statVolume">0</strong>
+            <em>Shares traded</em>
+          </article>
+          <article class="stat-card">
+            <span>市场状态</span>
+            <strong id="statMood">Open</strong>
+            <em><span class="live-dot"></span> 实时模拟</em>
+          </article>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-title">
+            <h2>上市公司</h2>
+            <input class="search-input" id="marketSearch" placeholder="搜索公司 / 股票代码" />
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>公司</th>
+                  <th>代码</th>
+                  <th>现价</th>
+                  <th>涨跌幅</th>
+                  <th>成交量</th>
+                  <th>市值</th>
+                  <th>行业</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="marketRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-ipos">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Primary Market</p>
+            <h1>IPO 认购</h1>
+            <p>通过管理员审核的公司会进入 IPO，用户可用虚拟资金认购。</p>
+          </div>
+        </div>
+        <div class="card-grid" id="ipoCards"></div>
+      </section>
+
+      <section class="view" id="view-portfolio">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Portfolio</p>
+            <h1>我的持仓</h1>
+            <p>查看虚拟资产、现金、股票持仓和历史交易。</p>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <article class="stat-card"><span>总资产</span><strong id="portfolioNetWorth">VX 0</strong><em>Cash + Equity</em></article>
+          <article class="stat-card"><span>现金</span><strong id="portfolioCash">VX 0</strong><em>Available</em></article>
+          <article class="stat-card"><span>持仓市值</span><strong id="portfolioEquity">VX 0</strong><em>Market value</em></article>
+          <article class="stat-card"><span>收益率</span><strong id="portfolioReturn">0.00%</strong><em>Since start</em></article>
+        </div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title"><h2>持仓列表</h2></div>
+            <div id="holdingList" class="list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><h2>交易记录</h2></div>
+            <div id="tradeList" class="list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-founder">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Founder Console</p>
+            <h1>创始人后台</h1>
+            <p>管理你创建的公司，查看审核状态、IPO 进度和公司表现。</p>
+          </div>
+          <button class="btn primary" data-view="create">+ 创建公司</button>
+        </div>
+        <div id="founderList" class="card-grid"></div>
+      </section>
+
+      <section class="view" id="view-create">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Listing Application</p>
+            <h1>申请上市</h1>
+            <p>提交公司资料后等待管理员审核。审核通过后自动开启 IPO。</p>
+          </div>
+        </div>
+        <form class="panel form-panel" id="companyForm">
+          <div class="form-grid">
+            <label>公司名称<input required id="companyName" maxlength="60" placeholder="例如：未来能源科技" /></label>
+            <label>股票代码<input required id="companyTicker" maxlength="5" placeholder="例如：FUTR" /></label>
+            <label>行业
+              <select id="companySector">
+                <option value="tech">科技</option>
+                <option value="finance">金融</option>
+                <option value="energy">能源</option>
+                <option value="consumer">消费</option>
+                <option value="health">医疗</option>
+                <option value="realestate">房地产</option>
+              </select>
+            </label>
+            <label>Logo Emoji<input id="companyEmoji" maxlength="2" placeholder="🚀" /></label>
+            <label>总股本<input type="number" required id="companyShares" value="1000000" min="100000" max="100000000" /></label>
+            <label>IPO 发行价<input type="number" required id="companyPrice" value="10" min="1" max="1000" step="0.01" /></label>
+            <label>IPO 发行比例
+              <select id="companyRatio">
+                <option value="0.1">10%</option>
+                <option value="0.2" selected>20%</option>
+                <option value="0.3">30%</option>
+                <option value="0.4">40%</option>
+              </select>
+            </label>
+          </div>
+          <label>公司简介 / 商业模式<textarea required id="companyDesc" rows="6" minlength="50" placeholder="至少 50 字：讲清楚公司业务、商业模式、增长逻辑和风险。"></textarea></label>
+          <div class="rule-box" id="listingRules"></div>
+          <button class="btn primary large" type="submit">提交上市申请</button>
+        </form>
+      </section>
+
+      <section class="view" id="view-leaderboard">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Ranking</p>
+            <h1>排行榜</h1>
+            <p>按总资产排名，展示平台中表现最好的虚拟投资者。</p>
+          </div>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>排名</th><th>用户</th><th>角色</th><th>总资产</th><th>持仓数</th></tr></thead>
+              <tbody id="leaderboardRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-admin">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Admin Console</p>
+            <h1>管理员后台</h1>
+            <p>审核公司、开启 IPO、拒绝违规申请，监控平台数据。</p>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <article class="stat-card"><span>待审核</span><strong id="adminPending">0</strong><em>Pending listings</em></article>
+          <article class="stat-card"><span>用户数</span><strong id="adminUsers">0</strong><em>Profiles</em></article>
+          <article class="stat-card"><span>交易数</span><strong id="adminTrades">0</strong><em>Trades</em></article>
+          <article class="stat-card"><span>模式</span><strong id="adminMode">Local</strong><em>Backend</em></article>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><h2>上市申请审核</h2></div>
+          <div id="adminPendingList" class="list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="authDialog" class="modal">
+    <form method="dialog" class="modal-card" id="authForm">
+      <button class="modal-close" value="close">×</button>
+      <h2>登录 / 注册</h2>
+      <p>Supabase 配置后支持真实多人账户；未配置时使用本地 Demo。</p>
+      <label>Email<input id="authEmail" type="email" required placeholder="you@example.com" /></label>
+      <label>用户名<input id="authUsername" placeholder="你的昵称" /></label>
+      <label>Password<input id="authPassword" type="password" required minlength="6" placeholder="至少 6 位" /></label>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" id="loginBtn">登录</button>
+        <button class="btn primary" type="button" id="registerBtn">注册</button>
+      </div>
+      <div class="hint">本地 Demo 管理员：admin@vx.local / admin123</div>
+    </form>
+  </dialog>
+
+  <dialog id="tradeDialog" class="modal">
+    <form method="dialog" class="modal-card" id="tradeForm">
+      <button class="modal-close" value="close">×</button>
+      <div id="tradeDialogContent"></div>
+    </form>
+  </dialog>
+
+  <dialog id="ipoDialog" class="modal">
+    <form method="dialog" class="modal-card" id="ipoForm">
+      <button class="modal-close" value="close">×</button>
+      <div id="ipoDialogContent"></div>
+    </form>
+  </dialog>
+</body>
+</html>
